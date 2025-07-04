@@ -8,10 +8,12 @@ using Windows Hello biometrics or security keys in Go applications.
 
 ## Features
 
-- Create and manage WebAuthn credentials
-- Authenticate users with Windows Hello
+- Create and manage WebAuthn credentials.
+- Authenticate users with Windows Hello.
 - Support for WebAuthn extensions (`hmac-secret`, `prf`, `credBlob`, etc.)
-- Hidden window management for authentication dialogs
+- `cgo`-free implementation (plain syscalls).
+- Windows Hello requires a window handle (hWnd) to work, `hiddenwindow` package allows making
+  one without going into hassle with Windows API.
 
 ## Method support
 
