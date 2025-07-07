@@ -4,7 +4,7 @@ go 1.24.4
 
 require (
 	github.com/fxamacker/cbor/v2 v2.8.0
-	github.com/go-ctap/ctaphid v0.7.0
+	github.com/go-ctap/ctaphid v0.7.1
 	github.com/goforj/godump v1.5.0
 	github.com/ldclabs/cose v1.3.2
 	github.com/stretchr/testify v1.10.0
