@@ -3,7 +3,7 @@ module github.com/go-ctap/winhello
 go 1.24.4
 
 require (
-	github.com/fxamacker/cbor/v2 v2.8.0
+	github.com/fxamacker/cbor/v2 v2.9.0
 	github.com/go-ctap/ctaphid v0.7.0
 	github.com/goforj/godump v1.5.0
 	github.com/ldclabs/cose v1.3.2
