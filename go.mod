@@ -7,7 +7,7 @@ require (
 	github.com/go-ctap/ctaphid v0.7.0
 	github.com/goforj/godump v1.5.0
 	github.com/ldclabs/cose v1.3.2
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.0
 	golang.org/x/sys v0.33.0
 )
 
