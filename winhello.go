@@ -18,29 +18,23 @@ import (
 
 var (
 	modWebAuthn                                               = windows.NewLazyDLL("webauthn.dll")
-	procWebAuthNAuthenticatorGetAssertion                     = modWebAuthn.NewProc("WebAuthNAuthenticatorGetAssertion")
-	procWebAuthNAuthenticatorMakeCredential                   = modWebAuthn.NewProc("WebAuthNAuthenticatorMakeCredential")
-	procWebAuthNCancelCurrentOperation                        = modWebAuthn.NewProc("WebAuthNCancelCurrentOperation")
-	procWebAuthNDeletePlatformCredential                      = modWebAuthn.NewProc("WebAuthNDeletePlatformCredential")
-	procWebAuthNFreeAssertion                                 = modWebAuthn.NewProc("WebAuthNFreeAssertion")
-	procWebAuthNFreeCredentialAttestation                     = modWebAuthn.NewProc("WebAuthNFreeCredentialAttestation")
-	procWebAuthNFreePlatformCredentialList                    = modWebAuthn.NewProc("WebAuthNFreePlatformCredentialList")
 	procWebAuthNGetApiVersionNumber                           = modWebAuthn.NewProc("WebAuthNGetApiVersionNumber")
-	procWebAuthNGetCancellationId                             = modWebAuthn.NewProc("WebAuthNGetCancellationId")
-	procWebAuthNGetErrorName                                  = modWebAuthn.NewProc("WebAuthNGetErrorName")
-	procWebAuthNGetPlatformCredentialList                     = modWebAuthn.NewProc("WebAuthNGetPlatformCredentialList")
-	procWebAuthNGetW3CExceptionDOMError                       = modWebAuthn.NewProc("WebAuthNGetW3CExceptionDOMError")
 	procWebAuthNIsUserVerifyingPlatformAuthenticatorAvailable = modWebAuthn.NewProc("WebAuthNIsUserVerifyingPlatformAuthenticatorAvailable")
+	procWebAuthNAuthenticatorMakeCredential                   = modWebAuthn.NewProc("WebAuthNAuthenticatorMakeCredential")
+	procWebAuthNAuthenticatorGetAssertion                     = modWebAuthn.NewProc("WebAuthNAuthenticatorGetAssertion")
+	procWebAuthNFreeCredentialAttestation                     = modWebAuthn.NewProc("WebAuthNFreeCredentialAttestation")
+	procWebAuthNFreeAssertion                                 = modWebAuthn.NewProc("WebAuthNFreeAssertion")
+	procWebAuthNGetCancellationId                             = modWebAuthn.NewProc("WebAuthNGetCancellationId")
+	procWebAuthNCancelCurrentOperation                        = modWebAuthn.NewProc("WebAuthNCancelCurrentOperation")
+	procWebAuthNGetPlatformCredentialList                     = modWebAuthn.NewProc("WebAuthNGetPlatformCredentialList")
+	procWebAuthNFreePlatformCredentialList                    = modWebAuthn.NewProc("WebAuthNFreePlatformCredentialList")
+	procWebAuthNDeletePlatformCredential                      = modWebAuthn.NewProc("WebAuthNDeletePlatformCredential")
+	procWebAuthNGetAuthenticatorList                          = modWebAuthn.NewProc("WebAuthNGetAuthenticatorList")
+	procWebAuthNFreeAuthenticatorList                         = modWebAuthn.NewProc("WebAuthNFreeAuthenticatorList")
+	procWebAuthNGetErrorName                                  = modWebAuthn.NewProc("WebAuthNGetErrorName")
+	procWebAuthNGetW3CExceptionDOMError                       = modWebAuthn.NewProc("WebAuthNGetW3CExceptionDOMError")
 	currVer                                                   = availableVersions(APIVersionNumber())
 )
-
-type WebAuthnCredentialDetails struct {
-	CredentialID []byte
-	RP           webauthntypes.PublicKeyCredentialRpEntity
-	User         webauthntypes.PublicKeyCredentialUserEntity
-	Removable    bool
-	BackedUp     bool
-}
 
 func GetAssertion(
 	hWnd windows.HWND,
@@ -55,19 +49,23 @@ func GetAssertion(
 	}
 
 	opts := &_WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS{
-		DwVersion:                     currVer.authenticatorGetAssertionOptions,
-		DwTimeoutMilliseconds:         uint32(winHelloOpts.Timeout.Milliseconds()),
-		CredentialList:                _WEBAUTHN_CREDENTIALS{}, // basically deprecated, baseline supports pAllowCredentialList
-		DwAuthenticatorAttachment:     uint32(winHelloOpts.AuthenticatorAttachment),
-		DwUserVerificationRequirement: uint32(winHelloOpts.UserVerificationRequirement),
-		DwFlags:                       0, // user only in version 8 for PRF Global Eval
-		DwCredLargeBlobOperation:      uint32(winHelloOpts.CredentialLargeBlobOperation),
-		CbCredLargeBlob:               uint32(len(winHelloOpts.CredentialLargeBlob)),
-		PbCredLargeBlob:               unsafe.SliceData(winHelloOpts.CredentialLargeBlob),
-		BBrowserInPrivateMode:         boolToInt32(winHelloOpts.BrowserInPrivateMode),
-		BAutoFill:                     boolToInt32(winHelloOpts.AutoFill),
-		CbJsonExt:                     uint32(len(winHelloOpts.JsonExt)),
-		PbJsonExt:                     unsafe.SliceData(winHelloOpts.JsonExt),
+		DwVersion:                               currVer.authenticatorGetAssertionOptions,
+		DwTimeoutMilliseconds:                   uint32(winHelloOpts.Timeout.Milliseconds()),
+		CredentialList:                          _WEBAUTHN_CREDENTIALS{}, // basically deprecated, baseline supports pAllowCredentialList
+		DwAuthenticatorAttachment:               uint32(winHelloOpts.AuthenticatorAttachment),
+		DwUserVerificationRequirement:           uint32(winHelloOpts.UserVerificationRequirement),
+		DwFlags:                                 0, // user only in version 8 for PRF Global Eval
+		DwCredLargeBlobOperation:                uint32(winHelloOpts.CredentialLargeBlobOperation),
+		CbCredLargeBlob:                         uint32(len(winHelloOpts.CredentialLargeBlob)),
+		PbCredLargeBlob:                         unsafe.SliceData(winHelloOpts.CredentialLargeBlob),
+		BBrowserInPrivateMode:                   boolToInt32(winHelloOpts.BrowserInPrivateMode),
+		BAutoFill:                               boolToInt32(winHelloOpts.AutoFill),
+		CbJsonExt:                               uint32(len(winHelloOpts.JsonExt)),
+		PbJsonExt:                               unsafe.SliceData(winHelloOpts.JsonExt),
+		CbPublicKeyCredentialRequestOptionsJSON: uint32(len(winHelloOpts.PublicKeyCredentialRequestOptionsJSON)),
+		PbPublicKeyCredentialRequestOptionsJSON: unsafe.SliceData(winHelloOpts.PublicKeyCredentialRequestOptionsJSON),
+		CbAuthenticatorId:                       uint32(len(winHelloOpts.AuthenticatorID)),
+		PbAuthenticatorId:                       unsafe.SliceData(winHelloOpts.AuthenticatorID),
 	}
 
 	credExList := make([]*_WEBAUTHN_CREDENTIAL_EX, len(allowList))
@@ -127,6 +125,10 @@ func GetAssertion(
 
 		opts.CCredentialHints = uint32(len(credHints))
 		opts.PpwszCredentialHints = unsafe.SliceData(credHints)
+	}
+
+	if winHelloOpts.RemoteWebOrigin != "" {
+		opts.PwszRemoteWebOrigin = windows.StringToUTF16Ptr(winHelloOpts.RemoteWebOrigin)
 	}
 
 	if extInputs != nil {
@@ -293,21 +295,25 @@ func MakeCredential(
 	}
 
 	opts := &_WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS{
-		DwVersion:                         currVer.authenticatorMakeCredentialOptions,
-		DwTimeoutMilliseconds:             uint32(winHelloOpts.Timeout.Milliseconds()),
-		CredentialList:                    _WEBAUTHN_CREDENTIALS{}, // basically deprecated, baseline supports pExcludeCredentialList
-		DwAuthenticatorAttachment:         uint32(winHelloOpts.AuthenticatorAttachment),
-		BRequireResidentKey:               boolToInt32(winHelloOpts.RequireResidentKey),
-		DwUserVerificationRequirement:     uint32(winHelloOpts.UserVerificationRequirement),
-		DwAttestationConveyancePreference: uint32(winHelloOpts.AttestationConveyancePreference),
-		DwFlags:                           0, // user only in version 8 for PRF Global Eval
-		DwEnterpriseAttestation:           uint32(winHelloOpts.EnterpriseAttestation),
-		DwLargeBlobSupport:                uint32(winHelloOpts.LargeBlobSupport),
-		BPreferResidentKey:                boolToInt32(winHelloOpts.PreferResidentKey),
-		BBrowserInPrivateMode:             boolToInt32(winHelloOpts.BrowserInPrivateMode),
-		CbJsonExt:                         uint32(len(winHelloOpts.JsonExt)),
-		PbJsonExt:                         unsafe.SliceData(winHelloOpts.JsonExt),
-		BThirdPartyPayment:                boolToInt32(winHelloOpts.ThirdPartyPayment),
+		DwVersion:                                currVer.authenticatorMakeCredentialOptions,
+		DwTimeoutMilliseconds:                    uint32(winHelloOpts.Timeout.Milliseconds()),
+		CredentialList:                           _WEBAUTHN_CREDENTIALS{}, // basically deprecated, baseline supports pExcludeCredentialList
+		DwAuthenticatorAttachment:                uint32(winHelloOpts.AuthenticatorAttachment),
+		BRequireResidentKey:                      boolToInt32(winHelloOpts.RequireResidentKey),
+		DwUserVerificationRequirement:            uint32(winHelloOpts.UserVerificationRequirement),
+		DwAttestationConveyancePreference:        uint32(winHelloOpts.AttestationConveyancePreference),
+		DwFlags:                                  0, // user only in version 8 for PRF Global Eval
+		DwEnterpriseAttestation:                  uint32(winHelloOpts.EnterpriseAttestation),
+		DwLargeBlobSupport:                       uint32(winHelloOpts.LargeBlobSupport),
+		BPreferResidentKey:                       boolToInt32(winHelloOpts.PreferResidentKey),
+		BBrowserInPrivateMode:                    boolToInt32(winHelloOpts.BrowserInPrivateMode),
+		CbJsonExt:                                uint32(len(winHelloOpts.JsonExt)),
+		PbJsonExt:                                unsafe.SliceData(winHelloOpts.JsonExt),
+		BThirdPartyPayment:                       boolToInt32(winHelloOpts.ThirdPartyPayment),
+		CbPublicKeyCredentialCreationOptionsJSON: uint32(len(winHelloOpts.PublicKeyCredentialCreationOptionsJSON)),
+		PbPublicKeyCredentialCreationOptionsJSON: unsafe.SliceData(winHelloOpts.PublicKeyCredentialCreationOptionsJSON),
+		CbAuthenticatorId:                        uint32(len(winHelloOpts.AuthenticatorID)),
+		PbAuthenticatorId:                        unsafe.SliceData(winHelloOpts.AuthenticatorID),
 	}
 
 	credExList := make([]*_WEBAUTHN_CREDENTIAL_EX, len(excludeList))
@@ -322,6 +328,7 @@ func MakeCredential(
 			case webauthntypes.AuthenticatorTransportBLE:
 				dwTransports |= uint32(WinHelloCTAPTransportBLE)
 			case webauthntypes.AuthenticatorTransportSmartCard:
+				dwTransports |= uint32(WinHelloCTAPTransportSmartCard)
 			case webauthntypes.AuthenticatorTransportHybrid:
 				dwTransports |= uint32(WinHelloCTAPTransportHybrid)
 			case webauthntypes.AuthenticatorTransportInternal:
@@ -361,6 +368,10 @@ func MakeCredential(
 
 		opts.CCredentialHints = uint32(len(credHints))
 		opts.PpwszCredentialHints = unsafe.SliceData(credHints)
+	}
+
+	if winHelloOpts.RemoteWebOrigin != "" {
+		opts.PwszRemoteWebOrigin = windows.StringToUTF16Ptr(winHelloOpts.RemoteWebOrigin)
 	}
 
 	if extInputs != nil {
@@ -582,6 +593,18 @@ func ErrorName(hr windows.Handle) string {
 	return windows.UTF16PtrToString((*uint16)(unsafe.Pointer(r1)))
 }
 
+type WebAuthnCredentialDetails struct {
+	CredentialID      []byte
+	RP                webauthntypes.PublicKeyCredentialRpEntity
+	User              webauthntypes.PublicKeyCredentialUserEntity
+	Removable         bool
+	BackedUp          bool
+	AuthenticatorName string
+	AuthenticatorLogo []byte
+	ThirdPartyPayment bool
+	Transports        []webauthntypes.AuthenticatorTransport
+}
+
 func PlatformCredentialList(rpID string, browserInPrivateMode bool) ([]*WebAuthnCredentialDetails, error) {
 	var rpIDPtr *uint16
 	if rpID != "" {
@@ -620,12 +643,69 @@ func PlatformCredentialList(rpID string, browserInPrivateMode bool) ([]*WebAuthn
 				Name:        windows.UTF16PtrToString(cred.PUserInformation.PwszName),
 			},
 			Removable: int32ToBool(cred.BRemovable),
-			BackedUp:  int32ToBool(cred.BBackedUp),
+		}
+
+		if cred.DwVersion >= 2 {
+			list[i].BackedUp = int32ToBool(cred.BBackedUp)
+		}
+
+		if cred.DwVersion >= 3 {
+			list[i].AuthenticatorName = windows.UTF16PtrToString(cred.PwszAuthenticatorName)
+			list[i].AuthenticatorLogo = bytes.Clone(unsafe.Slice(cred.PbAuthenticatorLogo, cred.CbAuthenticatorLogo))
+			list[i].ThirdPartyPayment = int32ToBool(cred.BThirdPartyPayment)
+		}
+
+		if cred.DwVersion >= 4 {
+			list[i].Transports = flagsToTransports(cred.DwTransports)
 		}
 	}
 
 	if _, _, err := procWebAuthNFreePlatformCredentialList.Call(
 		uintptr(unsafe.Pointer(credDetailsListPtr)),
+	); !errors.Is(err, windows.NTE_OP_OK) {
+		return nil, err
+	}
+
+	return list, nil
+}
+
+type WebAuthnAuthenticatorDetails struct {
+	ID     []byte
+	Name   string
+	Logo   []byte
+	Locked bool
+}
+
+func AuthenticatorList() ([]*WebAuthnAuthenticatorDetails, error) {
+	authenticatorListPtr := new(_WEBAUTHN_AUTHENTICATOR_DETAILS_LIST)
+
+	r1, _, _ := procWebAuthNGetPlatformCredentialList.Call(
+		uintptr(unsafe.Pointer(&_WEBAUTHN_AUTHENTICATOR_DETAILS_OPTIONS{
+			DwVersion: currVer.authenticatorDetails,
+		})),
+		uintptr(unsafe.Pointer(&authenticatorListPtr)),
+	)
+	if hr := windows.Handle(r1); hr != windows.S_OK {
+		return nil, windows.Errno(hr)
+	}
+
+	authenticatorListDetails := slices.Clone(unsafe.Slice(authenticatorListPtr.PpAuthenticatorDetails, authenticatorListPtr.CAuthenticatorDetails))
+
+	list := make([]*WebAuthnAuthenticatorDetails, len(authenticatorListDetails))
+	for i, cred := range authenticatorListDetails {
+		authenticatorID := bytes.Clone(unsafe.Slice(cred.PbAuthenticatorId, cred.CbAuthenticatorId))
+		authenticatorLogo := bytes.Clone(unsafe.Slice(cred.PbAuthenticatorLogo, cred.CbAuthenticatorLogo))
+
+		list[i] = &WebAuthnAuthenticatorDetails{
+			ID:     authenticatorID,
+			Name:   windows.UTF16PtrToString(cred.PwszAuthenticatorName),
+			Logo:   authenticatorLogo,
+			Locked: int32ToBool(cred.BLocked),
+		}
+	}
+
+	if _, _, err := procWebAuthNFreePlatformCredentialList.Call(
+		uintptr(unsafe.Pointer(authenticatorListPtr)),
 	); !errors.Is(err, windows.NTE_OP_OK) {
 		return nil, err
 	}

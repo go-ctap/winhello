@@ -46,7 +46,8 @@ const (
 	WinHelloCTAPTransportTest
 	WinHelloCTAPTransportInternal
 	WinHelloCTAPTransportHybrid
-	WinHelloCTAPTransportFlagsMask WinHelloCOSEAlgorithm = 0x0000003F
+	WinHelloCTAPTransportSmartCard
+	WinHelloCTAPTransportFlagsMask WinHelloCOSEAlgorithm = 0x0000007F
 )
 
 type WinHelloUserVerification uint32
@@ -135,25 +136,30 @@ const (
 )
 
 type AuthenticatorGetAssertionOptions struct {
-	Timeout                      time.Duration
-	AuthenticatorAttachment      WinHelloAuthenticatorAttachment
-	UserVerificationRequirement  WinHelloUserVerificationRequirement
-	U2FAppID                     string
-	CancellationID               *windows.GUID
-	CredentialLargeBlobOperation WinHelloCredentialLargeBlobOperation
-	CredentialLargeBlob          []byte
-	BrowserInPrivateMode         bool
-	AutoFill                     bool
-	JsonExt                      []byte
-	CredentialHints              []webauthntypes.PublicKeyCredentialHint
+	Timeout                               time.Duration
+	AuthenticatorAttachment               WinHelloAuthenticatorAttachment
+	UserVerificationRequirement           WinHelloUserVerificationRequirement
+	U2FAppID                              string
+	CancellationID                        *windows.GUID
+	CredentialLargeBlobOperation          WinHelloCredentialLargeBlobOperation
+	CredentialLargeBlob                   []byte
+	BrowserInPrivateMode                  bool
+	AutoFill                              bool
+	JsonExt                               []byte
+	CredentialHints                       []webauthntypes.PublicKeyCredentialHint
+	RemoteWebOrigin                       string
+	PublicKeyCredentialRequestOptionsJSON []byte
+	AuthenticatorID                       []byte
 }
 
 type WinHelloGetAssertionResponse struct {
 	*ctaptypes.AuthenticatorGetAssertionResponse
-	CredLargeBlob       []byte
-	CredLargeBlobStatus WinHelloCredentialLargeBlobStatus
-	UsedTransport       []webauthntypes.AuthenticatorTransport
-	hmacSecret          *webauthntypes.AuthenticationExtensionsPRFValues
+	CredLargeBlob              []byte
+	CredLargeBlobStatus        WinHelloCredentialLargeBlobStatus
+	UsedTransport              []webauthntypes.AuthenticatorTransport
+	ClientDataJSON             []byte
+	AuthenticationResponseJSON []byte
+	hmacSecret                 *webauthntypes.AuthenticationExtensionsPRFValues
 }
 
 func (a *_WEBAUTHN_ASSERTION) ToGetAssertionResponse() (
@@ -185,22 +191,41 @@ func (a *_WEBAUTHN_ASSERTION) ToGetAssertionResponse() (
 
 	winHelloResp := &WinHelloGetAssertionResponse{
 		AuthenticatorGetAssertionResponse: resp,
-		CredLargeBlob:                     bytes.Clone(unsafe.Slice(a.PbCredLargeBlob, a.CbCredLargeBlob)),
-		CredLargeBlobStatus:               WinHelloCredentialLargeBlobStatus(a.DwCredLargeBlobStatus),
-		UsedTransport:                     flagsToTransports(a.DwUsedTransport),
 	}
 
-	if a.PHmacSecret != nil {
+	if a.DwVersion >= 2 {
+		winHelloResp.CredLargeBlob = bytes.Clone(unsafe.Slice(a.PbCredLargeBlob, a.CbCredLargeBlob))
+		winHelloResp.CredLargeBlobStatus = WinHelloCredentialLargeBlobStatus(a.DwCredLargeBlobStatus)
+	}
+
+	if a.DwVersion >= 3 && a.PHmacSecret != nil {
 		winHelloResp.hmacSecret = &webauthntypes.AuthenticationExtensionsPRFValues{
 			First:  bytes.Clone(unsafe.Slice(a.PHmacSecret.PbFirst, a.PHmacSecret.CbFirst)),
 			Second: bytes.Clone(unsafe.Slice(a.PHmacSecret.PbSecond, a.PHmacSecret.CbSecond)),
 		}
 	}
 
-	unsignedExtensionOutputsRaw := bytes.Clone(unsafe.Slice(a.PbUnsignedExtensionOutputs, a.CbUnsignedExtensionOutputs))
-	if unsignedExtensionOutputsRaw != nil && len(unsignedExtensionOutputsRaw) > 0 {
-		if err := cbor.Unmarshal(unsignedExtensionOutputsRaw, &resp.UnsignedExtensionOutputs); err != nil {
-			return nil, err
+	if a.DwVersion >= 4 {
+		winHelloResp.UsedTransport = flagsToTransports(a.DwUsedTransport)
+	}
+
+	if a.DwVersion >= 5 {
+		unsignedExtensionOutputsRaw := bytes.Clone(unsafe.Slice(a.PbUnsignedExtensionOutputs, a.CbUnsignedExtensionOutputs))
+		if unsignedExtensionOutputsRaw != nil && len(unsignedExtensionOutputsRaw) > 0 {
+			if err := cbor.Unmarshal(unsignedExtensionOutputsRaw, &resp.UnsignedExtensionOutputs); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	if a.DwVersion >= 6 {
+		clientDataJSONRaw := bytes.Clone(unsafe.Slice(a.PbClientDataJSON, a.CbClientDataJSON))
+		if clientDataJSONRaw != nil && len(clientDataJSONRaw) > 0 {
+			winHelloResp.ClientDataJSON = clientDataJSONRaw
+		}
+		authenticationResponseJSONRaw := bytes.Clone(unsafe.Slice(a.PbAuthenticationResponseJSON, a.CbAuthenticationResponseJSON))
+		if authenticationResponseJSONRaw != nil && len(authenticationResponseJSONRaw) > 0 {
+			winHelloResp.AuthenticationResponseJSON = authenticationResponseJSONRaw
 		}
 	}
 
@@ -208,30 +233,36 @@ func (a *_WEBAUTHN_ASSERTION) ToGetAssertionResponse() (
 }
 
 type AuthenticatorMakeCredentialOptions struct {
-	Timeout                         time.Duration
-	AuthenticatorAttachment         WinHelloAuthenticatorAttachment
-	RequireResidentKey              bool
-	UserVerificationRequirement     WinHelloUserVerificationRequirement
-	AttestationConveyancePreference WinHelloAttestationConveyancePreference
-	CancellationID                  *windows.GUID
-	EnterpriseAttestation           WinHelloEnterpriseAttestation
-	LargeBlobSupport                WinHelloLargeBlobSupport
-	PreferResidentKey               bool
-	BrowserInPrivateMode            bool
-	JsonExt                         []byte
-	CredentialHints                 []webauthntypes.PublicKeyCredentialHint
-	ThirdPartyPayment               bool
+	Timeout                                time.Duration
+	AuthenticatorAttachment                WinHelloAuthenticatorAttachment
+	RequireResidentKey                     bool
+	UserVerificationRequirement            WinHelloUserVerificationRequirement
+	AttestationConveyancePreference        WinHelloAttestationConveyancePreference
+	CancellationID                         *windows.GUID
+	EnterpriseAttestation                  WinHelloEnterpriseAttestation
+	LargeBlobSupport                       WinHelloLargeBlobSupport
+	PreferResidentKey                      bool
+	BrowserInPrivateMode                   bool
+	JsonExt                                []byte
+	CredentialHints                        []webauthntypes.PublicKeyCredentialHint
+	ThirdPartyPayment                      bool
+	RemoteWebOrigin                        string
+	PublicKeyCredentialCreationOptionsJSON []byte
+	AuthenticatorID                        []byte
 }
 
 type WinHelloMakeCredentialResponse struct {
 	*ctaptypes.AuthenticatorMakeCredentialResponse
-	CredentialID       []byte
-	UsedTransport      []webauthntypes.AuthenticatorTransport
-	LargeBlobSupported bool
-	ResidentKey        bool
-	PRFEnabled         bool
-	HMACSecret         *webauthntypes.AuthenticationExtensionsPRFValues
-	ThirdPartyPayment  bool
+	CredentialID             []byte
+	UsedTransport            []webauthntypes.AuthenticatorTransport
+	LargeBlobSupported       bool
+	ResidentKey              bool
+	PRFEnabled               bool
+	HMACSecret               *webauthntypes.AuthenticationExtensionsPRFValues
+	ThirdPartyPayment        bool
+	Transports               []webauthntypes.AuthenticatorTransport
+	ClientDataJSON           []byte
+	RegistrationResponseJSON []byte
 }
 
 func (a *_WEBAUTHN_CREDENTIAL_ATTESTATION) ToMakeCredentialResponse() (*WinHelloMakeCredentialResponse, error) {
@@ -259,24 +290,48 @@ func (a *_WEBAUTHN_CREDENTIAL_ATTESTATION) ToMakeCredentialResponse() (*WinHello
 	winHelloResp := &WinHelloMakeCredentialResponse{
 		AuthenticatorMakeCredentialResponse: resp,
 		CredentialID:                        bytes.Clone(unsafe.Slice(a.PbCredentialId, a.CbCredentialId)),
-		UsedTransport:                       flagsToTransports(a.DwUsedTransport),
-		LargeBlobSupported:                  int32ToBool(a.BLargeBlobSupported),
-		ResidentKey:                         int32ToBool(a.BResidentKey),
-		PRFEnabled:                          int32ToBool(a.BPrfEnabled),
-		ThirdPartyPayment:                   int32ToBool(a.BThirdPartyPayment),
 	}
 
-	if a.PHmacSecret != nil {
+	if a.DwVersion >= 3 {
+		winHelloResp.UsedTransport = flagsToTransports(a.DwUsedTransport)
+	}
+
+	if a.DwVersion >= 4 {
+		winHelloResp.EnterpriseAttestation = int32ToBool(a.BEpAtt)
+		winHelloResp.LargeBlobSupported = int32ToBool(a.BLargeBlobSupported)
+		winHelloResp.ResidentKey = int32ToBool(a.BResidentKey)
+	}
+
+	if a.DwVersion >= 5 {
+		winHelloResp.PRFEnabled = int32ToBool(a.BPrfEnabled)
+	}
+
+	if a.DwVersion >= 6 {
+		unsignedExtensionOutputsRaw := bytes.Clone(unsafe.Slice(a.PbUnsignedExtensionOutputs, a.CbUnsignedExtensionOutputs))
+		if unsignedExtensionOutputsRaw != nil && len(unsignedExtensionOutputsRaw) > 0 {
+			if err := cbor.Unmarshal(unsignedExtensionOutputsRaw, &resp.UnsignedExtensionOutputs); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	if a.DwVersion >= 7 && a.PHmacSecret != nil {
 		winHelloResp.HMACSecret = &webauthntypes.AuthenticationExtensionsPRFValues{
 			First:  bytes.Clone(unsafe.Slice(a.PHmacSecret.PbFirst, a.PHmacSecret.CbFirst)),
 			Second: bytes.Clone(unsafe.Slice(a.PHmacSecret.PbSecond, a.PHmacSecret.CbSecond)),
 		}
+		winHelloResp.ThirdPartyPayment = int32ToBool(a.BThirdPartyPayment)
 	}
 
-	unsignedExtensionOutputsRaw := bytes.Clone(unsafe.Slice(a.PbUnsignedExtensionOutputs, a.CbUnsignedExtensionOutputs))
-	if unsignedExtensionOutputsRaw != nil && len(unsignedExtensionOutputsRaw) > 0 {
-		if err := cbor.Unmarshal(unsignedExtensionOutputsRaw, &resp.UnsignedExtensionOutputs); err != nil {
-			return nil, err
+	if a.DwVersion >= 8 {
+		winHelloResp.Transports = flagsToTransports(a.DwTransports)
+		clientDataJSONRaw := bytes.Clone(unsafe.Slice(a.PbClientDataJSON, a.CbClientDataJSON))
+		if clientDataJSONRaw != nil && len(clientDataJSONRaw) > 0 {
+			winHelloResp.ClientDataJSON = clientDataJSONRaw
+		}
+		registrationResponseJSONRaw := bytes.Clone(unsafe.Slice(a.PbRegistrationResponseJSON, a.CbRegistrationResponseJSON))
+		if registrationResponseJSONRaw != nil && len(registrationResponseJSONRaw) > 0 {
+			winHelloResp.RegistrationResponseJSON = registrationResponseJSONRaw
 		}
 	}
 
@@ -296,6 +351,8 @@ func flagsToTransports(flags uint32) []webauthntypes.AuthenticatorTransport {
 	case flags&uint32(WinHelloCTAPTransportInternal) != 0:
 		tr = append(tr, webauthntypes.AuthenticatorTransportInternal)
 	case flags&uint32(WinHelloCTAPTransportHybrid) != 0:
+	case flags&uint32(WinHelloCTAPTransportSmartCard) != 0:
+		tr = append(tr, webauthntypes.AuthenticatorTransportSmartCard)
 		tr = append(tr, webauthntypes.AuthenticatorTransportHybrid)
 	}
 

@@ -11,72 +11,85 @@ type (
 		Data4 [8]uint8
 	}
 	_WEBAUTHN_ASSERTION struct {
-		DwVersion                  uint32
-		CbAuthenticatorData        uint32
-		PbAuthenticatorData        *uint8
-		CbSignature                uint32
-		PbSignature                *uint8
-		Credential                 _WEBAUTHN_CREDENTIAL
-		CbUserId                   uint32
-		PbUserId                   *uint8
-		Extensions                 _WEBAUTHN_EXTENSIONS
-		CbCredLargeBlob            uint32
-		PbCredLargeBlob            *uint8
-		DwCredLargeBlobStatus      uint32
-		PHmacSecret                *_WEBAUTHN_HMAC_SECRET_SALT
-		DwUsedTransport            uint32
-		CbUnsignedExtensionOutputs uint32
-		PbUnsignedExtensionOutputs *uint8
+		DwVersion                    uint32
+		CbAuthenticatorData          uint32
+		PbAuthenticatorData          *uint8
+		CbSignature                  uint32
+		PbSignature                  *uint8
+		Credential                   _WEBAUTHN_CREDENTIAL
+		CbUserId                     uint32
+		PbUserId                     *uint8
+		Extensions                   _WEBAUTHN_EXTENSIONS
+		CbCredLargeBlob              uint32
+		PbCredLargeBlob              *uint8
+		DwCredLargeBlobStatus        uint32
+		PHmacSecret                  *_WEBAUTHN_HMAC_SECRET_SALT
+		DwUsedTransport              uint32
+		CbUnsignedExtensionOutputs   uint32
+		PbUnsignedExtensionOutputs   *uint8
+		CbClientDataJSON             uint32
+		PbClientDataJSON             *uint8
+		CbAuthenticationResponseJSON uint32
+		PbAuthenticationResponseJSON *uint8
 	}
 	_WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS struct {
-		DwVersion                     uint32
-		DwTimeoutMilliseconds         uint32
-		CredentialList                _WEBAUTHN_CREDENTIALS
-		Extensions                    _WEBAUTHN_EXTENSIONS
-		DwAuthenticatorAttachment     uint32
-		DwUserVerificationRequirement uint32
-		DwFlags                       uint32
-		PwszU2fAppId                  *uint16
-		PbU2fAppId                    *int32
-		PCancellationId               *_GUID
-		PAllowCredentialList          *_WEBAUTHN_CREDENTIAL_LIST
-		DwCredLargeBlobOperation      uint32
-		CbCredLargeBlob               uint32
-		PbCredLargeBlob               *uint8
-		PHmacSecretSaltValues         *_WEBAUTHN_HMAC_SECRET_SALT_VALUES
-		BBrowserInPrivateMode         int32
-		PLinkedDevice                 *_CTAPCBOR_HYBRID_STORAGE_LINKED_DATA
-		BAutoFill                     int32
-		CbJsonExt                     uint32
-		PbJsonExt                     *uint8
-		CCredentialHints              uint32
-		PpwszCredentialHints          **uint16
+		DwVersion                               uint32
+		DwTimeoutMilliseconds                   uint32
+		CredentialList                          _WEBAUTHN_CREDENTIALS
+		Extensions                              _WEBAUTHN_EXTENSIONS
+		DwAuthenticatorAttachment               uint32
+		DwUserVerificationRequirement           uint32
+		DwFlags                                 uint32
+		PwszU2fAppId                            *uint16
+		PbU2fAppId                              *int32
+		PCancellationId                         *_GUID
+		PAllowCredentialList                    *_WEBAUTHN_CREDENTIAL_LIST
+		DwCredLargeBlobOperation                uint32
+		CbCredLargeBlob                         uint32
+		PbCredLargeBlob                         *uint8
+		PHmacSecretSaltValues                   *_WEBAUTHN_HMAC_SECRET_SALT_VALUES
+		BBrowserInPrivateMode                   int32
+		PLinkedDevice                           *_CTAPCBOR_HYBRID_STORAGE_LINKED_DATA
+		BAutoFill                               int32
+		CbJsonExt                               uint32
+		PbJsonExt                               *uint8
+		CCredentialHints                        uint32
+		PpwszCredentialHints                    **uint16
+		PwszRemoteWebOrigin                     *uint16
+		CbPublicKeyCredentialRequestOptionsJSON uint32
+		PbPublicKeyCredentialRequestOptionsJSON *uint8
+		CbAuthenticatorId                       uint32
+		PbAuthenticatorId                       *uint8
 	}
 	_WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS struct {
-		DwVersion                         uint32
-		DwTimeoutMilliseconds             uint32
-		CredentialList                    _WEBAUTHN_CREDENTIALS
-		Extensions                        _WEBAUTHN_EXTENSIONS
-		DwAuthenticatorAttachment         uint32
-		BRequireResidentKey               int32
-		DwUserVerificationRequirement     uint32
-		DwAttestationConveyancePreference uint32
-		DwFlags                           uint32
-		PCancellationId                   *_GUID
-		PExcludeCredentialList            *_WEBAUTHN_CREDENTIAL_LIST
-		DwEnterpriseAttestation           uint32
-		DwLargeBlobSupport                uint32
-		BPreferResidentKey                int32
-		BBrowserInPrivateMode             int32
-		BEnablePrf                        int32
-		PLinkedDevice                     *_CTAPCBOR_HYBRID_STORAGE_LINKED_DATA
-		CbJsonExt                         uint32
-		PbJsonExt                         *uint8
-		PPRFGlobalEval                    *_WEBAUTHN_HMAC_SECRET_SALT
-		CCredentialHints                  uint32
-		PpwszCredentialHints              **uint16
-		BThirdPartyPayment                int32
-		Pad_cgo_0                         [4]byte
+		DwVersion                                uint32
+		DwTimeoutMilliseconds                    uint32
+		CredentialList                           _WEBAUTHN_CREDENTIALS
+		Extensions                               _WEBAUTHN_EXTENSIONS
+		DwAuthenticatorAttachment                uint32
+		BRequireResidentKey                      int32
+		DwUserVerificationRequirement            uint32
+		DwAttestationConveyancePreference        uint32
+		DwFlags                                  uint32
+		PCancellationId                          *_GUID
+		PExcludeCredentialList                   *_WEBAUTHN_CREDENTIAL_LIST
+		DwEnterpriseAttestation                  uint32
+		DwLargeBlobSupport                       uint32
+		BPreferResidentKey                       int32
+		BBrowserInPrivateMode                    int32
+		BEnablePrf                               int32
+		PLinkedDevice                            *_CTAPCBOR_HYBRID_STORAGE_LINKED_DATA
+		CbJsonExt                                uint32
+		PbJsonExt                                *uint8
+		PPRFGlobalEval                           *_WEBAUTHN_HMAC_SECRET_SALT
+		CCredentialHints                         uint32
+		PpwszCredentialHints                     **uint16
+		BThirdPartyPayment                       int32
+		PwszRemoteWebOrigin                      *uint16
+		CbPublicKeyCredentialCreationOptionsJSON uint32
+		PbPublicKeyCredentialCreationOptionsJSON *uint8
+		CbAuthenticatorId                        uint32
+		PbAuthenticatorId                        *uint8
 	}
 	_WEBAUTHN_CLIENT_DATA struct {
 		DwVersion        uint32
@@ -150,7 +163,11 @@ type (
 		PbUnsignedExtensionOutputs *uint8
 		PHmacSecret                *_WEBAUTHN_HMAC_SECRET_SALT
 		BThirdPartyPayment         int32
-		Pad_cgo_0                  [4]byte
+		DwTransports               uint32
+		CbClientDataJSON           uint32
+		PbClientDataJSON           *uint8
+		CbRegistrationResponseJSON uint32
+		PbRegistrationResponseJSON *uint8
 	}
 	_WEBAUTHN_CREDENTIAL_DETAILS struct {
 		DwVersion             uint32
@@ -164,7 +181,7 @@ type (
 		CbAuthenticatorLogo   uint32
 		PbAuthenticatorLogo   *uint8
 		BThirdPartyPayment    int32
-		Pad_cgo_0             [4]byte
+		DwTransports          uint32
 	}
 	_WEBAUTHN_CREDENTIAL_DETAILS_LIST struct {
 		CCredentialDetails  uint32
@@ -243,6 +260,23 @@ type (
 		PwszAuthenticatorName      *uint16
 		WEncodedTunnelServerDomain uint16
 		Pad_cgo_0                  [6]byte
+	}
+	_WEBAUTHN_AUTHENTICATOR_DETAILS_OPTIONS struct {
+		DwVersion uint32
+	}
+	_WEBAUTHN_AUTHENTICATOR_DETAILS struct {
+		DwVersion             uint32
+		CbAuthenticatorId     uint32
+		PbAuthenticatorId     *uint8
+		PwszAuthenticatorName *uint16
+		CbAuthenticatorLogo   uint32
+		PbAuthenticatorLogo   *uint8
+		BLocked               int32
+		Pad_cgo_0             [4]byte
+	}
+	_WEBAUTHN_AUTHENTICATOR_DETAILS_LIST struct {
+		CAuthenticatorDetails  uint32
+		PpAuthenticatorDetails **_WEBAUTHN_AUTHENTICATOR_DETAILS
 	}
 )
 

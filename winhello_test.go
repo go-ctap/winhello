@@ -9,12 +9,13 @@ import (
 	"testing"
 
 	"github.com/go-ctap/ctaphid/pkg/webauthntypes"
-	"github.com/go-ctap/winhello/hiddenwindow"
 	"github.com/goforj/godump"
 	"github.com/ldclabs/cose/iana"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/windows"
+
+	"github.com/go-ctap/winhello/hiddenwindow"
 )
 
 var (
@@ -250,4 +251,17 @@ func TestAuthenticatorGetCrossPlatformAssertion(t *testing.T) {
 	)
 
 	godump.Dump(assertion)
+}
+
+func TestAuthenticatorList(t *testing.T) {
+	if !runWinHelloTests() {
+		t.Skip("Skipping test because WINHELLO_TESTS is not set")
+	}
+
+	list, err := AuthenticatorList()
+	require.NoError(t, err)
+
+	for _, auth := range list {
+		godump.Dump(auth)
+	}
 }
