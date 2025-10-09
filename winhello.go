@@ -679,7 +679,7 @@ type WebAuthnAuthenticatorDetails struct {
 func AuthenticatorList() ([]*WebAuthnAuthenticatorDetails, error) {
 	authenticatorListPtr := new(_WEBAUTHN_AUTHENTICATOR_DETAILS_LIST)
 
-	r1, _, _ := procWebAuthNGetPlatformCredentialList.Call(
+	r1, _, _ := procWebAuthNGetAuthenticatorList.Call(
 		uintptr(unsafe.Pointer(&_WEBAUTHN_AUTHENTICATOR_DETAILS_OPTIONS{
 			DwVersion: currVer.authenticatorDetails,
 		})),
@@ -689,7 +689,10 @@ func AuthenticatorList() ([]*WebAuthnAuthenticatorDetails, error) {
 		return nil, windows.Errno(hr)
 	}
 
-	authenticatorListDetails := slices.Clone(unsafe.Slice(authenticatorListPtr.PpAuthenticatorDetails, authenticatorListPtr.CAuthenticatorDetails))
+	authenticatorListDetails := slices.Clone(unsafe.Slice(
+		authenticatorListPtr.PpAuthenticatorDetails,
+		authenticatorListPtr.CAuthenticatorDetails,
+	))
 
 	list := make([]*WebAuthnAuthenticatorDetails, len(authenticatorListDetails))
 	for i, cred := range authenticatorListDetails {
@@ -704,7 +707,7 @@ func AuthenticatorList() ([]*WebAuthnAuthenticatorDetails, error) {
 		}
 	}
 
-	if _, _, err := procWebAuthNFreePlatformCredentialList.Call(
+	if _, _, err := procWebAuthNFreeAuthenticatorList.Call(
 		uintptr(unsafe.Pointer(authenticatorListPtr)),
 	); !errors.Is(err, windows.NTE_OP_OK) {
 		return nil, err
