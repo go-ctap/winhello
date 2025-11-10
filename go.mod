@@ -8,7 +8,7 @@ require (
 	github.com/goforj/godump v1.6.0
 	github.com/ldclabs/cose v1.3.2
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/sys v0.35.0
+	golang.org/x/sys v0.38.0
 )
 
 require (
