@@ -7,8 +7,10 @@ import (
 	"log/slog"
 
 	"github.com/go-ctap/ctaphid/pkg/webauthntypes"
+
 	"github.com/go-ctap/winhello"
-	"github.com/go-ctap/winhello/hiddenwindow"
+	"github.com/go-ctap/winhello/pkg/hiddenwindow"
+
 	"github.com/goforj/godump"
 )
 

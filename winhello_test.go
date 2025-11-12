@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/windows"
 
-	"github.com/go-ctap/winhello/hiddenwindow"
+	"github.com/go-ctap/winhello/pkg/hiddenwindow"
 )
 
 var (
@@ -72,8 +72,8 @@ func TestAuthenticatorMakePlatformCredential(t *testing.T) {
 			},
 		},
 		&AuthenticatorMakeCredentialOptions{
-			AuthenticatorAttachment:         WinHelloAuthenticatorAttachmentPlatform,
-			AttestationConveyancePreference: WinHelloAttestationConveyancePreferenceDirect,
+			AuthenticatorAttachment:         AuthenticatorAttachmentPlatform,
+			AttestationConveyancePreference: AttestationConveyancePreferenceDirect,
 			RequireResidentKey:              true,
 		},
 	)
@@ -97,8 +97,8 @@ func TestGetPlatformAssertion(t *testing.T) {
 		nil,
 		nil,
 		&AuthenticatorGetAssertionOptions{
-			AuthenticatorAttachment:     WinHelloAuthenticatorAttachmentPlatform,
-			UserVerificationRequirement: WinHelloUserVerificationRequirementDiscouraged,
+			AuthenticatorAttachment:     AuthenticatorAttachmentPlatform,
+			UserVerificationRequirement: UserVerificationRequirementDiscouraged,
 			CredentialHints: []webauthntypes.PublicKeyCredentialHint{
 				webauthntypes.PublicKeyCredentialHintClientDevice,
 				webauthntypes.PublicKeyCredentialHintSecurityKey,
@@ -182,8 +182,8 @@ func TestAuthenticatorMakeCrossPlatformCredential(t *testing.T) {
 			},
 		},
 		&AuthenticatorMakeCredentialOptions{
-			AuthenticatorAttachment:         WinHelloAuthenticatorAttachmentCrossPlatform,
-			AttestationConveyancePreference: WinHelloAttestationConveyancePreferenceDirect,
+			AuthenticatorAttachment:         AuthenticatorAttachmentCrossPlatform,
+			AttestationConveyancePreference: AttestationConveyancePreferenceDirect,
 		},
 	)
 	require.NoError(t, err)
@@ -226,8 +226,8 @@ func TestAuthenticatorGetCrossPlatformAssertion(t *testing.T) {
 			},
 		},
 		&AuthenticatorGetAssertionOptions{
-			AuthenticatorAttachment:     WinHelloAuthenticatorAttachmentCrossPlatform,
-			UserVerificationRequirement: WinHelloUserVerificationRequirementDiscouraged,
+			AuthenticatorAttachment:     AuthenticatorAttachmentCrossPlatform,
+			UserVerificationRequirement: UserVerificationRequirementDiscouraged,
 			CredentialHints: []webauthntypes.PublicKeyCredentialHint{
 				webauthntypes.PublicKeyCredentialHintClientDevice,
 				webauthntypes.PublicKeyCredentialHintSecurityKey,
