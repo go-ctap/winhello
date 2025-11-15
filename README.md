@@ -39,7 +39,7 @@ go get github.com/go-ctap/winhello
 
 ## Usage
 
-See a small [example](/example).
+See a small [example](/cmd/example).
 
 ## Requirements
 

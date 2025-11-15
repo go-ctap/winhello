@@ -1,6 +1,6 @@
 //go:build windows
 
-//go:generate powershell -Command "go tool cgo -godefs types_webauthn.go | Set-Content -Path ztypes_webauthn.go -Encoding UTF8"
+//go:generate powershell ./generate.ps1
 package winhello
 
 import (
@@ -9,7 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"slices"
+	"strings"
 	"unsafe"
 
 	"github.com/go-ctap/ctaphid/pkg/webauthntypes"
@@ -43,7 +43,7 @@ func GetAssertion(
 	allowList []webauthntypes.PublicKeyCredentialDescriptor,
 	extInputs *webauthntypes.GetAuthenticationExtensionsClientInputs,
 	winHelloOpts *AuthenticatorGetAssertionOptions,
-) (*WinHelloGetAssertionResponse, error) {
+) (*GetAssertionResponse, error) {
 	if winHelloOpts == nil {
 		winHelloOpts = &AuthenticatorGetAssertionOptions{}
 	}
@@ -54,7 +54,7 @@ func GetAssertion(
 		CredentialList:                          _WEBAUTHN_CREDENTIALS{}, // basically deprecated, baseline supports pAllowCredentialList
 		DwAuthenticatorAttachment:               uint32(winHelloOpts.AuthenticatorAttachment),
 		DwUserVerificationRequirement:           uint32(winHelloOpts.UserVerificationRequirement),
-		DwFlags:                                 0, // user only in version 8 for PRF Global Eval
+		DwFlags:                                 0, // used only in version 8 for PRF Global Eval
 		DwCredLargeBlobOperation:                uint32(winHelloOpts.CredentialLargeBlobOperation),
 		CbCredLargeBlob:                         uint32(len(winHelloOpts.CredentialLargeBlob)),
 		PbCredLargeBlob:                         unsafe.SliceData(winHelloOpts.CredentialLargeBlob),
@@ -70,29 +70,12 @@ func GetAssertion(
 
 	credExList := make([]*_WEBAUTHN_CREDENTIAL_EX, len(allowList))
 	for i, ex := range allowList {
-		dwTransports := uint32(0)
-		for _, tr := range ex.Transports {
-			switch tr {
-			case webauthntypes.AuthenticatorTransportUSB:
-				dwTransports |= uint32(WinHelloCTAPTransportUSB)
-			case webauthntypes.AuthenticatorTransportNFC:
-				dwTransports |= uint32(WinHelloCTAPTransportNFC)
-			case webauthntypes.AuthenticatorTransportBLE:
-				dwTransports |= uint32(WinHelloCTAPTransportBLE)
-			case webauthntypes.AuthenticatorTransportSmartCard:
-			case webauthntypes.AuthenticatorTransportHybrid:
-				dwTransports |= uint32(WinHelloCTAPTransportHybrid)
-			case webauthntypes.AuthenticatorTransportInternal:
-				dwTransports |= uint32(WinHelloCTAPTransportInternal)
-			}
-		}
-
 		credExList[i] = &_WEBAUTHN_CREDENTIAL_EX{
 			DwVersion:          currVer.credentialEx,
 			CbId:               uint32(len(ex.ID)),
 			PbId:               unsafe.SliceData(ex.ID),
 			PwszCredentialType: windows.StringToUTF16Ptr(string(ex.Type)),
-			DwTransports:       dwTransports,
+			DwTransports:       transportsToFlags(ex.Transports),
 		}
 	}
 	if len(credExList) > 0 {
@@ -103,12 +86,7 @@ func GetAssertion(
 	}
 
 	if winHelloOpts.CancellationID != nil {
-		opts.PCancellationId = &_GUID{
-			Data1: winHelloOpts.CancellationID.Data1,
-			Data2: winHelloOpts.CancellationID.Data2,
-			Data3: winHelloOpts.CancellationID.Data3,
-			Data4: winHelloOpts.CancellationID.Data4,
-		}
+		opts.PCancellationId = winHelloOpts.CancellationID
 	}
 
 	if winHelloOpts.U2FAppID != "" {
@@ -160,7 +138,7 @@ func GetAssertion(
 				CbSecond: uint32(len(extInputs.GetHMACSecretInputs.HMACGetSecret.Salt2)),
 				PbSecond: unsafe.SliceData(extInputs.GetHMACSecretInputs.HMACGetSecret.Salt2),
 			}
-			opts.DwFlags |= WinHelloAuthenticatorHMACSecretValuesFlag
+			opts.DwFlags |= AuthenticatorHMACSecretValuesFlag
 		}
 
 		// prf
@@ -226,7 +204,7 @@ func GetAssertion(
 	defer func() {
 		_, _, err := procWebAuthNFreeAssertion.Call(uintptr(unsafe.Pointer(assertionPtr)))
 		if err != nil && !errors.Is(err, windows.NTE_OP_OK) {
-			slog.Debug("Assertion free failed!", "err", err)
+			slog.Error("Freeing assertion response failed!", "err", err)
 		}
 	}()
 
@@ -280,7 +258,7 @@ func MakeCredential(
 	excludeList []webauthntypes.PublicKeyCredentialDescriptor,
 	extInputs *webauthntypes.CreateAuthenticationExtensionsClientInputs,
 	winHelloOpts *AuthenticatorMakeCredentialOptions,
-) (*WinHelloMakeCredentialResponse, error) {
+) (*MakeCredentialResponse, error) {
 	coseCredentialParams := make([]_WEBAUTHN_COSE_CREDENTIAL_PARAMETER, len(pubKeyCredParams))
 	for i, param := range pubKeyCredParams {
 		coseCredentialParams[i] = _WEBAUTHN_COSE_CREDENTIAL_PARAMETER{
@@ -318,30 +296,12 @@ func MakeCredential(
 
 	credExList := make([]*_WEBAUTHN_CREDENTIAL_EX, len(excludeList))
 	for i, ex := range excludeList {
-		dwTransports := uint32(0)
-		for _, tr := range ex.Transports {
-			switch tr {
-			case webauthntypes.AuthenticatorTransportUSB:
-				dwTransports |= uint32(WinHelloCTAPTransportUSB)
-			case webauthntypes.AuthenticatorTransportNFC:
-				dwTransports |= uint32(WinHelloCTAPTransportNFC)
-			case webauthntypes.AuthenticatorTransportBLE:
-				dwTransports |= uint32(WinHelloCTAPTransportBLE)
-			case webauthntypes.AuthenticatorTransportSmartCard:
-				dwTransports |= uint32(WinHelloCTAPTransportSmartCard)
-			case webauthntypes.AuthenticatorTransportHybrid:
-				dwTransports |= uint32(WinHelloCTAPTransportHybrid)
-			case webauthntypes.AuthenticatorTransportInternal:
-				dwTransports |= uint32(WinHelloCTAPTransportInternal)
-			}
-		}
-
 		credExList[i] = &_WEBAUTHN_CREDENTIAL_EX{
 			DwVersion:          currVer.credentialEx,
 			CbId:               uint32(len(ex.ID)),
 			PbId:               unsafe.SliceData(ex.ID),
 			PwszCredentialType: windows.StringToUTF16Ptr(string(ex.Type)),
-			DwTransports:       dwTransports,
+			DwTransports:       transportsToFlags(ex.Transports),
 		}
 	}
 	if len(credExList) > 0 {
@@ -352,12 +312,7 @@ func MakeCredential(
 	}
 
 	if winHelloOpts.CancellationID != nil {
-		opts.PCancellationId = &_GUID{
-			Data1: winHelloOpts.CancellationID.Data1,
-			Data2: winHelloOpts.CancellationID.Data2,
-			Data3: winHelloOpts.CancellationID.Data3,
-			Data4: winHelloOpts.CancellationID.Data4,
-		}
+		opts.PCancellationId = winHelloOpts.CancellationID
 	}
 
 	if winHelloOpts.CredentialHints != nil {
@@ -399,7 +354,7 @@ func MakeCredential(
 				CbSecond: uint32(len(extInputs.PRFInputs.PRF.Eval.Second)),
 				PbSecond: unsafe.SliceData(extInputs.PRFInputs.PRF.Eval.Second),
 			}
-			opts.DwFlags |= WinHelloAuthenticatorHMACSecretValuesFlag
+			opts.DwFlags |= AuthenticatorHMACSecretValuesFlag
 		}
 
 		// prf
@@ -419,14 +374,14 @@ func MakeCredential(
 				PwszExtensionIdentifier: windows.StringToUTF16Ptr(string(webauthntypes.ExtensionIdentifierCredentialProtection)),
 			}
 
-			credProtectValue := WinHelloUserVerificationAny
+			credProtectValue := UserVerificationAny
 			switch extInputs.CreateCredentialProtectionInputs.CredentialProtectionPolicy {
 			case webauthntypes.CredentialProtectionPolicyUserVerificationOptional:
-				credProtectValue = WinHelloUserVerificationOptional
+				credProtectValue = UserVerificationOptional
 			case webauthntypes.CredentialProtectionPolicyUserVerificationOptionalWithCredentialIDList:
-				credProtectValue = WinHelloUserVerificationOptionalWithCredentialIDList
+				credProtectValue = UserVerificationOptionalWithCredentialIDList
 			case webauthntypes.CredentialProtectionPolicyUserVerificationRequired:
-				credProtectValue = WinHelloUserVerificationRequired
+				credProtectValue = UserVerificationRequired
 			}
 
 			credProtect := _WEBAUTHN_CRED_PROTECT_EXTENSION_IN{
@@ -488,6 +443,7 @@ func MakeCredential(
 			PbId:            unsafe.SliceData(user.ID),
 			PwszName:        windows.StringToUTF16Ptr(user.Name),
 			PwszDisplayName: windows.StringToUTF16Ptr(user.DisplayName),
+			PwszIcon:        windows.StringToUTF16Ptr(user.Icon),
 		})),
 		uintptr(unsafe.Pointer(&_WEBAUTHN_COSE_CREDENTIAL_PARAMETERS{
 			CCredentialParameters: uint32(len(coseCredentialParams)),
@@ -561,7 +517,7 @@ func CancelCurrentOperation() (*windows.GUID, error) {
 func DeletePlatformCredential(credentialID []byte) error {
 	r1, _, _ := procWebAuthNDeletePlatformCredential.Call(
 		uintptr(len(credentialID)),
-		uintptr(unsafe.Pointer(&credentialID[0])),
+		uintptr(unsafe.Pointer(unsafe.SliceData(credentialID))),
 	)
 	if hr := windows.Handle(r1); hr != windows.S_OK {
 		return windows.Errno(hr)
@@ -625,7 +581,7 @@ func PlatformCredentialList(rpID string, browserInPrivateMode bool) ([]*WebAuthn
 		return nil, windows.Errno(hr)
 	}
 
-	credListDetails := slices.Clone(unsafe.Slice(credDetailsListPtr.PpCredentialDetails, credDetailsListPtr.CCredentialDetails))
+	credListDetails := unsafe.Slice(credDetailsListPtr.PpCredentialDetails, credDetailsListPtr.CCredentialDetails)
 
 	list := make([]*WebAuthnCredentialDetails, len(credListDetails))
 	for i, cred := range credListDetails {
@@ -641,6 +597,7 @@ func PlatformCredentialList(rpID string, browserInPrivateMode bool) ([]*WebAuthn
 				ID:          bytes.Clone(unsafe.Slice(cred.PUserInformation.PbId, cred.PUserInformation.CbId)),
 				DisplayName: windows.UTF16PtrToString(cred.PUserInformation.PwszDisplayName),
 				Name:        windows.UTF16PtrToString(cred.PUserInformation.PwszName),
+				Icon:        windows.UTF16PtrToString(cred.PUserInformation.PwszIcon),
 			},
 			Removable: int32ToBool(cred.BRemovable),
 		}
@@ -689,19 +646,20 @@ func AuthenticatorList() ([]*WebAuthnAuthenticatorDetails, error) {
 		return nil, windows.Errno(hr)
 	}
 
-	authenticatorListDetails := slices.Clone(unsafe.Slice(
+	authenticatorListDetails := unsafe.Slice(
 		authenticatorListPtr.PpAuthenticatorDetails,
 		authenticatorListPtr.CAuthenticatorDetails,
-	))
+	)
 
 	list := make([]*WebAuthnAuthenticatorDetails, len(authenticatorListDetails))
 	for i, cred := range authenticatorListDetails {
+		name := strings.Clone(windows.UTF16PtrToString(cred.PwszAuthenticatorName))
 		authenticatorID := bytes.Clone(unsafe.Slice(cred.PbAuthenticatorId, cred.CbAuthenticatorId))
 		authenticatorLogo := bytes.Clone(unsafe.Slice(cred.PbAuthenticatorLogo, cred.CbAuthenticatorLogo))
 
 		list[i] = &WebAuthnAuthenticatorDetails{
 			ID:     authenticatorID,
-			Name:   windows.UTF16PtrToString(cred.PwszAuthenticatorName),
+			Name:   name,
 			Logo:   authenticatorLogo,
 			Locked: int32ToBool(cred.BLocked),
 		}
