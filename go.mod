@@ -5,7 +5,7 @@ go 1.25.8
 require (
 	github.com/fxamacker/cbor/v2 v2.9.1
 	github.com/go-ctap/ctaphid v0.9.0
-	github.com/goforj/godump v1.9.0
+	github.com/goforj/godump v1.9.1
 	github.com/ldclabs/cose v1.3.4
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/sys v0.43.0
